@@ -7,3 +7,5 @@ __pycache__/
 # local data: use a named volume in docker-compose.yml, never a bind mount
 data/
 *.db
+# local copy of the Moodle Lab 1 package, kept for reference only
+docs/
