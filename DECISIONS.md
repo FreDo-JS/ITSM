@@ -8,18 +8,6 @@ svcdesk_decisions:
 
 # Decisions
 
-<!--
-How to fill this in (delete this comment when you are done):
-- The three values in the front matter must be the ones your RUNNING service exhibits. The checker probes the
-  service (checks 2.41, 2.35, 2.46) and compares them with this file (L1-CORE-4).
-- Keep the three headings starting with "## C1", "## C2", "## C3" and the five bold labels in each section. Write
-  at least 20 characters after every label; the lecturer reads this document, so write what you would say to
-  the service owner, not the minimum.
-- "Service owner": the role (never a person's name) who would sign this decision off, and why it is theirs.
-- "Customer outcome": what the reporter or the organisation gets from this choice, in one or two sentences.
-- Update the ai-generated line above to say how much of this text an AI wrote and how.
--->
-
 ## C1 - SLA clock for P1
 
 **Decision:** Both the acknowledge and the resolve target of a P1 ticket run on the wall-clock: `created_at + target`, never paused, day or night. Every other priority (P2-P4) runs on the business-hours clock (Monday-Friday, 08:00-16:00 Europe/Warsaw).
