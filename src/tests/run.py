@@ -179,6 +179,98 @@ def test_list_filters():
     assert p4["id"] in {t["id"] for t in new}
 
 
+# --- Lab 2: DORA metrics and the ticket-event stream -------------------------------------------------------------
+
+WINDOW = {"from": "2026-09-01T00:00:00Z", "to": "2026-09-22T00:00:00Z"}
+
+
+def commit(n, at, change="CHG-1", reverts=None, branch="main"):
+    return {"event_id": f"c-{n}", "type": "commit", "at": at, "sha": f"sha-{n}", "branch": branch,
+            "change_id": None if reverts else change, "reverts": reverts}
+
+
+def deploy(n, at, shas, outcome="success", env="production", unplanned=False, caused_by=None):
+    return {"event_id": f"d-{n}", "type": "deployment", "at": at, "deployment_id": f"DEP-{n}", "environment": env,
+            "outcome": outcome, "commits": shas, "unplanned": unplanned, "caused_by": caused_by}
+
+
+def incident(n, at, phase, deps):
+    return {"event_id": f"i-{n}-{phase}", "type": "incident", "at": at, "incident_id": f"INC-{n}",
+            "phase": phase, "deployments": deps}
+
+
+def dora(events, window=WINDOW):
+    status, body = call("POST", "/dora/metrics", {"window": window, "events": events}, clock=None)
+    assert status == 200, (status, body)
+    return body
+
+
+SMALL_LOG = [
+    commit(1, "2026-09-02T08:00:00Z", "CHG-1"),
+    commit(2, "2026-09-02T12:00:00Z", reverts="sha-1"),
+    commit(3, "2026-09-02T13:00:00Z", reverts="sha-2"),
+    commit(4, "2026-09-03T10:30:00Z", "CHG-2", branch="hotfix/x"),    # after its deployment: clock skew
+    deploy(1, "2026-09-03T08:00:00Z", ["sha-1", "sha-2", "sha-3"]),
+    deploy(2, "2026-09-03T10:00:00Z", ["sha-4"]),
+    deploy(3, "2026-09-04T10:00:00Z", [], outcome="failure"),
+    deploy(4, "2026-09-05T10:00:00Z", [], outcome="failure", unplanned=True, caused_by="INC-1"),
+    deploy(5, "2026-09-05T11:00:00Z", ["sha-1"], env="staging"),
+    incident(1, "2026-09-04T11:00:00Z", "opened", ["DEP-3"]),
+    incident(1, "2026-09-04T13:00:00Z", "resolved", ["DEP-3"]),
+    incident(2, "2026-09-04T12:00:00Z", "opened", ["DEP-4"]),
+]
+
+
+def test_dora_small_log_edge_cases():
+    m = dora(SMALL_LOG)
+    assert m["counts"]["deployments"] == 4 and m["counts"]["changes"] == 2, m["counts"]
+    assert m["anomalies"] == {"negative_lead_time_pairs": 1, "deployments_without_commits": 2,
+                              "commits_never_on_main": 1, "revert_chains_collapsed": 2,
+                              "overlapping_incident_pairs": 1}, m["anomalies"]
+    assert m["counts"]["open_failures"] == 1 and m["counts"]["recovered_failures"] == 1, m["counts"]
+    assert m["failed_deployment_recovery_time_seconds_p50"] == 3 * 3600, m
+    assert m["change_fail_rate"] == 0.5 and m["deployment_rework_rate"] == 0.25, m
+    assert m["ground_truth"]["changes_delivered"] == 2, m["ground_truth"]
+
+
+def test_dora_pure_order_independent_and_deduplicated():
+    first = dora(SMALL_LOG)
+    assert dora(list(reversed(SMALL_LOG))) == first
+    assert dora(SMALL_LOG + SMALL_LOG) == first
+
+
+def test_dora_empty_log():
+    m = dora([])
+    assert m["deployment_frequency_per_day"] == 0.0 and m["change_lead_time_seconds_p50"] is None, m
+    assert m["change_fail_rate"] is None and m["deployment_rework_rate"] is None, m
+    assert all(v == 0 for v in m["counts"].values()) and all(v == 0 for v in m["anomalies"].values()), m
+
+
+def test_dora_rejections():
+    bad_bodies = [
+        {"events": []},
+        {"window": {"from": WINDOW["to"], "to": WINDOW["from"]}, "events": []},
+        {"window": WINDOW},
+        {"window": WINDOW, "events": {}},
+        {"window": WINDOW, "events": [commit(9, "2026-09-02T08:00:00Z", reverts="sha-missing")]},
+        [],
+    ]
+    for body in bad_bodies:
+        status, resp = call("POST", "/dora/metrics", body, clock=None)
+        assert status in (400, 422) and "error" in resp, (body, status, resp)
+
+
+def test_ticket_event_stream():
+    ticket = create(clock="2001-01-01T00:00:00Z")
+    drive(ticket, "ack", "start", "resolve", clock="2001-01-01T01:00:00Z")
+    status, stream = call("GET", "/dora/ticket-events", clock=None)
+    assert status == 200
+    mine = [e["phase"] for e in stream if e["ticket_id"] == ticket["id"]]
+    assert mine == ["created", "acknowledged", "resolved"], mine
+    keys = [(e["at"], e["ticket_id"]) for e in stream]
+    assert keys == sorted(keys), "stream not ordered by (at, ticket_id)"
+
+
 # --- runner -----------------------------------------------------------------------------------------------------
 
 

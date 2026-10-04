@@ -13,6 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from . import dora
 from .sla import compute_priority, due_instants, in_business_hours, uses_wallclock
 from .store import open_store
 
@@ -246,6 +247,25 @@ def resolve(ticket_id: str, request: Request):
 @app.post("/tickets/{ticket_id}/close")
 def close(ticket_id: str, request: Request):
     return transition(ticket_id, request, "close", "resolved", "closed", "closed_at")
+
+
+@app.post("/dora/metrics")
+async def dora_metrics(request: Request):
+    """Lab 2: a pure function of the request body (METRIC-SPEC.md section 6); nothing is stored."""
+    try:
+        body = await request.json()
+    except ValueError:
+        raise invalid("request body must be valid JSON")
+    try:
+        return dora.compute(body)
+    except dora.LogError as exc:
+        raise invalid(str(exc))
+
+
+@app.get("/dora/ticket-events")
+def dora_ticket_events():
+    """Lab 2: every lifecycle instant of every ticket, ordered by (at, ticket_id) (METRIC-SPEC.md section 7)."""
+    return dora.ticket_events(store.all())
 
 
 @app.post("/tickets/{ticket_id}/reopen")
