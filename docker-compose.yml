@@ -1,14 +1,20 @@
-# Course template - Lab 1 compose contract (API.md section 9).
+# svcdesk compose project (API.md section 9; Lab 3: MONITORING-SPEC.md M-01).
 # The checker enforces: a service named exactly "svcdesk", port 8080 inside the container,
-# SVCDESK_TEST_CLOCK set, no host-path bind mounts on any service, and images that need
+# SVCDESK_TEST_CLOCK set, no host-path bind mounts on svcdesk or kb-index, and images that need
 # no network once built (dependencies are installed at build time, never at start).
+#
+#   docker compose up -d --build svcdesk kb-index        # the two services the checker starts
+#   docker compose --profile observability up -d         # plus our own Prometheus (:9090) and Grafana (:3000)
 services:
   svcdesk:
     build: .
     ports:
-      - "8080:8080"               # recommended for local work; the checker removes it in container mode
+      - "${SVCDESK_HOST_PORT:-8080}:8080"   # host port overridable when 8080 is taken; the checker removes it
     environment:
       SVCDESK_TEST_CLOCK: "1"     # required: enables the X-Test-Clock header (API.md section 8)
+      KB_INDEX_URL: http://kb-index:8080
+    depends_on:
+      - kb-index
     volumes:
       - svcdesk-data:/data        # a NAMED volume, so tickets survive a restart (R-23); never a bind mount
     # python:3.13-slim has no curl, so the healthcheck uses Python.
@@ -18,6 +24,35 @@ services:
       timeout: 3s
       retries: 20
       start_period: 5s
+
+  # The knowledge-base index behind GET /kb/search (M-01). The checker replaces image and login with its own.
+  kb-index:
+    image: ghcr.io/swasik/seeded-toxic:2026
+    environment:
+      SEEDED_TOXIC_LOGIN: fredo-js
+    ports:
+      - "8081:8080"               # /stats and /admin/degrade from the laptop
+    # No healthcheck: the image has no shell, so a command inside it never passes (L3-CORE-1.04).
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    profiles: ["observability"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus:ro         # never started by the checker, so a bind mount is allowed here
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    profiles: ["observability"]
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
 
   # Stretch S3 (own tests): src/tests/run.py, standard library only, reads the service URL from SVCDESK_URL
   # and prints "ITSMLAB-TESTS: passed=<n> failed=<m>" as its last line.
@@ -31,6 +66,14 @@ services:
     environment:
       SVCDESK_URL: http://svcdesk:8080
     command: ["python", "-m", "tests.run"]
+
+  # Lab 3 Stretch 2 (latency gap): Toxiproxy in front of svcdesk.
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    profiles: ["gap"]
+    ports:
+      - "8474:8474"
+      - "8666:8666"
 
 volumes:
   svcdesk-data:

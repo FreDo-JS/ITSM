@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import dora
+from . import dora, kb, observability
 from .sla import compute_priority, due_instants, in_business_hours, uses_wallclock
 from .store import open_store
 
@@ -22,6 +22,7 @@ TEST_CLOCK_ENABLED = os.environ.get("SVCDESK_TEST_CLOCK", "").strip().lower() in
 
 app = FastAPI(title="svcdesk")
 store = open_store()
+observability.install(app)
 
 
 class ApiError(Exception):
@@ -247,6 +248,18 @@ def resolve(ticket_id: str, request: Request):
 @app.post("/tickets/{ticket_id}/close")
 def close(ticket_id: str, request: Request):
     return transition(ticket_id, request, "close", "resolved", "closed", "closed_at")
+
+
+@app.get("/kb/search")
+async def kb_search(request: Request):
+    """Lab 3: knowledge-base search through kb-index (MONITORING-SPEC.md M-02)."""
+    q = request.query_params.get("q")
+    if q is None or not 1 <= len(q) <= 200:
+        raise invalid("q is required, 1 to 200 characters")
+    try:
+        return await kb.search(q)
+    except kb.UpstreamUnavailable as exc:
+        raise ApiError(502, "upstream_unavailable", str(exc))
 
 
 @app.post("/dora/metrics")
