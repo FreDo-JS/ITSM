@@ -1,0 +1,31 @@
+# ai-generated: 80% - Claude Code wrote the routing tree and inhibition from INCIDENT-SPEC.md I-04 to I-08; proved with amtool and a throwaway Alertmanager
+# alertmanager/alertmanager.yml - the routing tree: P1 pages, P2 and P3 go to chat (I-04 to I-08).
+global:
+  resolve_timeout: 5m
+route:
+  receiver: chat                  # the root: anything that matches no child is a chat message, never a page
+  group_by: [alertname, service]
+  group_wait: 10s                 # part of MTTA: the first page of a new group waits this long
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="P1"']
+      receiver: pager
+    - matchers: ['severity=~"P2|P3"']
+      receiver: chat
+receivers:
+  - name: pager
+    webhook_configs:
+      - url: http://pager:8080/hook/pager
+        send_resolved: true
+  - name: chat
+    webhook_configs:
+      - url: http://pager:8080/hook/chat
+        send_resolved: true
+inhibit_rules:
+  # While checkout pages, the per-service P2 symptoms of the same cluster are the same incident seen from another
+  # angle: mute them, so that the on-call reads one page and not five chat messages. `equal: [cluster]` keeps a page
+  # in one cluster from muting another cluster's warnings; every shop rule carries `cluster: shop`.
+  - source_matchers: ['severity="P1"', 'service="checkout"']
+    target_matchers: ['severity="P2"']
+    equal: [cluster]

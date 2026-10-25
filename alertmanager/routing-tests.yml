@@ -1,0 +1,28 @@
+# ai-generated: 80% - Claude Code wrote the cases from our own rules in demo-alerts.yml and alerts.yml
+# alertmanager/routing-tests.yml - the cases that prove the routing tree (I-06 to I-08).
+routes:
+  - labels: {alertname: ShopCheckoutErrors, service: checkout, severity: P1, cluster: shop}
+    receivers: [pager]
+  - labels: {alertname: ShopCheckoutLatency, service: checkout, severity: P1, cluster: shop}
+    receivers: [pager]
+  - labels: {alertname: ShopFrontendLatency, service: frontend, severity: P2, cluster: shop}
+    receivers: [chat]
+  - labels: {alertname: ShopServiceErrors, service: shop, severity: P2, cluster: shop}
+    receivers: [chat]
+  - labels: {alertname: KbSearchErrorsBurnFast, service: svcdesk, slo: availability, severity: P1}
+    receivers: [pager]
+  - labels: {alertname: KbSearchErrorsBurnSlow, service: svcdesk, slo: availability, severity: P2}
+    receivers: [chat]
+inhibitions:
+  # The checkout page mutes the frontend warning of the same cluster ...
+  - source: {alertname: ShopCheckoutErrors, service: checkout, severity: P1, cluster: shop}
+    target: {alertname: ShopFrontendLatency, service: frontend, severity: P2, cluster: shop}
+    inhibited: true
+  # ... and not one of another cluster: the pair differs only in `cluster`, the label the rule lists in `equal`.
+  - source: {alertname: ShopCheckoutErrors, service: checkout, severity: P1, cluster: shop}
+    target: {alertname: ShopFrontendLatency, service: frontend, severity: P2, cluster: staging}
+    inhibited: false
+  # A page never mutes another page.
+  - source: {alertname: ShopCheckoutErrors, service: checkout, severity: P1, cluster: shop}
+    target: {alertname: ShopCheckoutLatency, service: checkout, severity: P1, cluster: shop}
+    inhibited: false
