@@ -1,0 +1,22 @@
+# ai-generated: 75% - Claude Code drafted the two rules from how svcdesk's clock and store work; I chose the decisions they guard and reviewed the tests
+rules:
+  - id: svcdesk-direct-clock-read
+    languages: [python]
+    severity: WARNING
+    message: >-
+      svcdesk takes "now" from one place, the request clock helper in main.py, so that X-Test-Clock reaches every
+      SLA decision (API.md section 8). A direct wall-clock read anywhere else silently ignores the test clock; call
+      the helper instead. The helper's own fallback is the one read this rule expects to find.
+    pattern-either:
+      - pattern: datetime.now(...)
+      - pattern: datetime.utcnow()
+      - pattern: time.time()
+
+  - id: svcdesk-sqlite-shared-connection
+    languages: [python]
+    severity: WARNING
+    message: >-
+      check_same_thread=False shares one SQLite connection between the worker threads FastAPI uses; that is only
+      safe behind the TicketStore lock in store.py (every execute runs under "with self._lock"). Open a connection
+      like this nowhere else: go through TicketStore, or keep the default thread check.
+    pattern: sqlite3.connect(..., check_same_thread=False)
