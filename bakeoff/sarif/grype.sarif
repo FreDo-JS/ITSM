@@ -1,0 +1,111 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "grype",
+          "version": "0.119.0",
+          "informationUri": "https://github.com/anchore/grype",
+          "rules": [
+            {
+              "id": "GHSA-8q59-q68h-6hv4-pyyaml",
+              "name": "PythonMatcherExactDirectMatch",
+              "shortDescription": {
+                "text": "GHSA-8q59-q68h-6hv4 critical vulnerability for pyyaml package"
+              },
+              "fullDescription": {
+                "text": "Improper Input Validation in PyYAML"
+              },
+              "helpUri": "https://github.com/advisories/GHSA-8q59-q68h-6hv4",
+              "help": {
+                "text": "Vulnerability GHSA-8q59-q68h-6hv4\nSeverity: critical\nPackage: pyyaml\nVersion: 5.3.1\nFix Version: 5.4\nType: python\nLocation: /lab5-canary/requirements.txt\nData Namespace: github:language:python\nLink: [GHSA-8q59-q68h-6hv4](https://github.com/advisories/GHSA-8q59-q68h-6hv4)",
+                "markdown": "**Vulnerability GHSA-8q59-q68h-6hv4**\n| Severity | Package | Version | Fix Version | Type | Location | Data Namespace | Link |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| critical  | pyyaml  | 5.3.1  | 5.4  | python  | /lab5-canary/requirements.txt  | github:language:python  | [GHSA-8q59-q68h-6hv4](https://github.com/advisories/GHSA-8q59-q68h-6hv4)  |\n"
+              },
+              "properties": {
+                "purls": [
+                  "pkg:pypi/pyyaml@5.3.1"
+                ],
+                "security-severity": "9.8"
+              }
+            },
+            {
+              "id": "GHSA-8h2j-cgx8-6xv7-fastapi",
+              "name": "PythonMatcherExactDirectMatch",
+              "shortDescription": {
+                "text": "GHSA-8h2j-cgx8-6xv7 high vulnerability for fastapi package"
+              },
+              "fullDescription": {
+                "text": "Cross-Site Request Forgery (CSRF) in FastAPI"
+              },
+              "helpUri": "https://github.com/advisories/GHSA-8h2j-cgx8-6xv7",
+              "help": {
+                "text": "Vulnerability GHSA-8h2j-cgx8-6xv7\nSeverity: high\nPackage: fastapi\nVersion: 0.65.1\nFix Version: 0.65.2\nType: python\nLocation: /lab5-canary/requirements.txt\nData Namespace: github:language:python\nLink: [GHSA-8h2j-cgx8-6xv7](https://github.com/advisories/GHSA-8h2j-cgx8-6xv7)",
+                "markdown": "**Vulnerability GHSA-8h2j-cgx8-6xv7**\n| Severity | Package | Version | Fix Version | Type | Location | Data Namespace | Link |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| high  | fastapi  | 0.65.1  | 0.65.2  | python  | /lab5-canary/requirements.txt  | github:language:python  | [GHSA-8h2j-cgx8-6xv7](https://github.com/advisories/GHSA-8h2j-cgx8-6xv7)  |\n"
+              },
+              "properties": {
+                "purls": [
+                  "pkg:pypi/fastapi@0.65.1"
+                ],
+                "security-severity": "8.8"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "GHSA-8q59-q68h-6hv4-pyyaml",
+          "level": "error",
+          "message": {
+            "text": "A critical vulnerability in python package: pyyaml, version 5.3.1 was found at: /lab5-canary/requirements.txt"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/lab5-canary/requirements.txt"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0c3bc1f1a43ccf359c4f09d961c7c0cc29d3f6f903263e090a916118139b87c6:1"
+          }
+        },
+        {
+          "ruleId": "GHSA-8h2j-cgx8-6xv7-fastapi",
+          "level": "error",
+          "message": {
+            "text": "A high vulnerability in python package: fastapi, version 0.65.1 was found at: /lab5-canary/requirements.txt"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/lab5-canary/requirements.txt"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "27818d91c3c07f2f4d10529294610ff62a0243fbf567222edad2d7bcbae176a9:1"
+          }
+        }
+      ]
+    }
+  ]
+}
